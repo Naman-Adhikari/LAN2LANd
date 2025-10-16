@@ -1,9 +1,9 @@
 use std::fs::File;
+use std::io::BufRead;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
-// use std::path::Path;
+use std::path::Path;
 use std::thread;
-use std::io::BufRead;
 
 fn main() {
     println!("Simple LAN File Transfer");
@@ -22,11 +22,8 @@ fn main() {
     }
 }
 
-
-
 fn receive_mode() {
-    let listener = TcpListener::bind("0.0.0.0:7878")
-        .expect("Could not bind to port 7878");
+    let listener = TcpListener::bind("0.0.0.0:7878").expect("Could not bind to port 7878");
 
     println!("Listening on port 7878.....");
     println!("Waiting for sender.......");
@@ -41,7 +38,6 @@ fn receive_mode() {
             }
             Err(e) => eprintln!("Connection error {}", e),
         }
-
     }
 }
 
@@ -62,7 +58,6 @@ fn handle_connection(stream: &mut TcpStream) {
         outfile.write_all(&buffer[..n]).unwrap();
     }
     println!("Received file: {}", filename);
-=======
     println!("Enter the full file path to send: ");
     let mut path = String::new();
     io::stdin().read_line(&mut path).unwrap();
@@ -96,5 +91,4 @@ fn handle_connection(stream: &mut TcpStream) {
         }
         Err(e) => eprintln!("Connection failed: {}", e),
     }
-
 }
