@@ -22,9 +22,6 @@ fn main() {
     }
 }
 
-fn send_mode() {
-    println!("fk this shit");
-}
 
 
 fn receive_mode() {
@@ -65,4 +62,39 @@ fn handle_connection(stream: &mut TcpStream) {
         outfile.write_all(&buffer[..n]).unwrap();
     }
     println!("Received file: {}", filename);
+=======
+    println!("Enter the full file path to send: ");
+    let mut path = String::new();
+    io::stdin().read_line(&mut path).unwrap();
+    let path = path.trim();
+
+    println!("Enter receiver IP: ");
+    io::stdout().flush().unwrap();
+    let mut ip = String::new();
+    io::stdin().read_line(&mut ip).unwrap();
+    let ip = ip.trim();
+
+    match TcpStream::connect(format!("{}:7878", ip)) {
+        Ok(mut stream) => {
+            let path_obj = Path::new(path);
+            let file_name = path_obj.file_name().unwrap().to_string_lossy();
+            let mut file = File::open(path_obj).expect("failed to open file");
+
+            stream
+                .write_all(format!("{}\n", file_name).as_bytes())
+                .unwrap();
+
+            let mut buffer = [0u8; 4096];
+            loop {
+                let n = file.read(&mut buffer).unwrap();
+                if n == 0 {
+                    break;
+                }
+                stream.write_all(&buffer[..n]).unwrap();
+            }
+            println!("File sent successfully!!");
+        }
+        Err(e) => eprintln!("Connection failed: {}", e),
+    }
+
 }
