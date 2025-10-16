@@ -1,12 +1,10 @@
 use std::fs::File;
 use std::io::BufRead;
 use std::io::{self, Read, Write};
-use std::net::{TcpListener, TcpStream, UdpSocket};
+use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::process::Command;
 use std::thread;
-use std::time::Duration;
-use hostname;
 
 fn main() {
     println!("Simple LAN File Transfer");
@@ -26,30 +24,6 @@ fn main() {
 }
 
 fn send_mode() {
-    println!("Scanning for peers in your LAN....");
-
-    // Discover peers via UDP
-    let peers = discover_peers();
-    if peers.is_empty() {
-        println!("No peers found!");
-        return; 
-    }
-
-    // Show peers if available
-    println!("Available Peers: ");
-    for(i, (name, ip)) in peers.iter().enumerate() {
-        println!("[{}] {} ({})", i+1, name, ip);
-    }
-
-    print!("Select peer to send file: ");
-    io::stdout().flush().unwrap();
-    let mut choice = String::new();
-    io::stdin().read_line(&mut choice).unwrap();
-
-    let choice : usize = choice.trim().parse().unwrap();
-
-    let (_, peer_ip) = &peers[choice - 1];
-
     let file_path = match Command::new("zenity")
         .arg("--file-selection")
         .arg("--title=Select a file to send")
@@ -65,7 +39,13 @@ fn send_mode() {
     };
     println!("selected file: {}", file_path);
 
-    match TcpStream::connect(format!("{}:7878", peer_ip)) {
+    println!("Enter receiver IP : 192.168.1.");
+    io::stdout().flush().unwrap();
+    let mut ip = String::new();
+    io::stdin().read_line(&mut ip).unwrap();
+    let ip = ip.trim();
+
+    match TcpStream::connect(format!("192.168.1.{}:7878", ip)) {
         Ok(mut stream) => {
             let path_obj = Path::new(&file_path);
             let file_name = path_obj.file_name().unwrap().to_string_lossy();
@@ -75,6 +55,7 @@ fn send_mode() {
                 .write_all(format!("{}\n", file_name).as_bytes())
                 .unwrap();
 
+            // send file bytes
             let mut buffer = [0u8; 4096];
             loop {
                 let n = file.read(&mut buffer).unwrap();
@@ -90,11 +71,6 @@ fn send_mode() {
 }
 
 fn receive_mode() {
-
-    thread::spawn(|| {
-        listen_for_discovery();
-    })
-
     let listener = TcpListener::bind("0.0.0.0:7878").expect("Could not bind");
     println!("Listening on port 7878...");
     println!("Waiting for sender...");
@@ -129,58 +105,4 @@ fn handle_connection(stream: &mut TcpStream) {
         outfile.write_all(&buffer[..n]).unwrap();
     }
     println!("Received file: {}", filename);
-}
-
-fn discover_peers() -> Vec<(String, String)> {
-    let broadcast_addr = "255.255.255.255:9999";
-    let local_socket = UdpSocket::bind("0.0.0.0:0").expect("Couldnt bind UDP Socket");
-
-    //allow broadcast
-    local_socket.set_broadcast(true).unwrap();
-
-    // get hostname
-    let hostname = hostname::get().unwrap().to_string_lossy().to_string();
-
-
-    let msg = format!("{} : {}", hostname, 0);
-    local_socket
-        .send_to(msg.as_bytes(), broadcast_addr)
-        .unwrap();
-
-    // listen for 1 sec for replies
-    local_socket
-        .set_read_timeout(Some(Duration::from_secs(1)))
-        .unwrap();
-
-    let mut peers = Vec::new();
-    let mut buf = [0u8; 128];
-
-    while let Ok((size, src)) = local_socket.recv_from(&mut buf) {
-            let received = String::from_utf8_lossy(&buf[..size]);
-            let name = received.split(':').next().unwrap_or("Unknown").to_string();
-            let ip = src.ip().to_string();
-
-            peers.push((name, ip));
-        }
-    peers
-}
-
-fn listen_for_discovery() {
-    let socket = UdpSocket::bind("0.0.0.0:9999").expect("Could not bind UDP discovery");
-
-    let hostname = hostname::get().unwrap().to_string_lossy().to_string();
-
-    let mut buf = [0u8; 128];
-
-    println!("Listening for LAN discovery on UDP port 9999");
-
-    loop {
-        if let Ok((size, src)) = socket.recv_from(&mut buf) {
-            let msg = String::from_utf8_lossy(&buf[..size]);
-            if msg == "DISCOVER" {
-                socket.send_to(hostname.as_bytes(), src).unwrap();
-                println!("Responded to discovery request from {}", src);
-            }
-        }
-    }
 }
