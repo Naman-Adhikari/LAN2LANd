@@ -71,6 +71,11 @@ fn send_mode() {
 }
 
 fn receive_mode() {
+
+    thread::spawn(|| {
+        listen_for_discovery();
+    });
+
     let listener = TcpListener::bind("0.0.0.0:7878").expect("Could not bind");
     println!("Listening on port 7878...");
     println!("Waiting for sender...");
@@ -105,4 +110,48 @@ fn handle_connection(stream: &mut TcpStream) {
         outfile.write_all(&buffer[..n]).unwrap();
     }
     println!("Received file: {}", filename);
+}
+
+fn discover_peers() -> Vec<(String, String)> {
+    let broadcast_addr = "255.255.255.255:9999";
+    let local_socket = UdpSocket::bind("0.0.0.0:0").expect("Couldnt bind UDP Socket");
+
+    local_socket.set_broadcast(true).unwrap();
+
+    let msg = "DISCOVER";
+    local_socket.send_to(msg.as_bytes(), broadcast_addr).unwrap();
+
+    local_socket.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+
+    let mut peers = Vec::new();
+    let mut buf = [0u8; 128];
+
+    while let Ok((size, src)) = local_socket.recv_from(&mut buf) {
+        let received = String::from_utf8_lossy(&buf[..size]);
+        let name = received.trim().to_string();
+        let ip = src.ip().to_string();
+        peers.push((name, ip));
+    }
+    peers
+}
+
+
+fn listen_for_discovery() {
+    let socket = UdpSocket::bind("0.0.0.0:9999").expect("Could not bind UDP discovery");
+
+    let hostname = hostname::get().unwrap().to_string_lossy().to_string();
+
+    let mut buf = [0u8; 128];
+
+    println!("Listening for LAN discovery on UDP port 9999");
+
+    loop {
+        if let Ok((size, src)) = socket.recv_from(&mut buf) {
+            let msg = String::from_utf8_lossy(&buf[..size]);
+            if msg == "DISCOVER" {
+                socket.send_to(hostname.as_bytes(), src).unwrap();
+                println!("Responded to discovery request from {}", src);
+            }
+        }
+    }
 }
