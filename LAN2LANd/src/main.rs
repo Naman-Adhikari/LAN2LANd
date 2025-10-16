@@ -1,9 +1,9 @@
 use std::fs::File;
+use std::io::BufRead;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::thread;
-use std::io::BufRead;
 
 fn main() {
     println!("Simple LAN File Transfer");
@@ -23,19 +23,19 @@ fn main() {
 }
 
 fn send_mode() {
-    print!("Enter receiver IP (e.g. 192.168.1.5): ");
+    println!("Enter receiver IP : 192.168.1. ");
     io::stdout().flush().unwrap();
     let mut ip = String::new();
     io::stdin().read_line(&mut ip).unwrap();
     let ip = ip.trim();
 
-    print!("Enter file path to send: ");
+    println!("Enter file path to send: ");
     io::stdout().flush().unwrap();
     let mut path = String::new();
     io::stdin().read_line(&mut path).unwrap();
     let path = path.trim();
 
-    match TcpStream::connect(format!("{}:7878", ip)) {
+    match TcpStream::connect(format!("192.168.1.{}:7878", ip)) {
         Ok(mut stream) => {
             let path_obj = Path::new(path);
             let file_name = path_obj.file_name().unwrap().to_string_lossy();
