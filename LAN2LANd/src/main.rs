@@ -29,7 +29,7 @@ fn send_mode() {
     io::stdin().read_line(&mut path).unwrap();
     let path = path.trim();
 
-    print!("Enter receiver IP : 192.168.1.");
+    println!("Enter receiver IP : 192.168.1.");
     io::stdout().flush().unwrap();
     let mut ip = String::new();
     io::stdin().read_line(&mut ip).unwrap();
