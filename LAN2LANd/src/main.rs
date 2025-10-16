@@ -3,6 +3,7 @@ use std::io::BufRead;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
+use std::process::Command;
 use std::thread;
 
 fn main() {
@@ -23,11 +24,20 @@ fn main() {
 }
 
 fn send_mode() {
-    println!("Enter file path to send: ");
-    io::stdout().flush().unwrap();
-    let mut path = String::new();
-    io::stdin().read_line(&mut path).unwrap();
-    let path = path.trim();
+    let file_path = match Command::new("zenity")
+        .arg("--file-selection")
+        .arg("--title=Select a file to send")
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        }
+        _ => {
+            println!("No files selected! ABORTING...");
+            return;
+        }
+    };
+    println!("selected file: {}", file_path);
 
     println!("Enter receiver IP : 192.168.1.");
     io::stdout().flush().unwrap();
@@ -37,11 +47,10 @@ fn send_mode() {
 
     match TcpStream::connect(format!("192.168.1.{}:7878", ip)) {
         Ok(mut stream) => {
-            let path_obj = Path::new(path);
+            let path_obj = Path::new(&file_path);
             let file_name = path_obj.file_name().unwrap().to_string_lossy();
             let mut file = File::open(path_obj).expect("Failed to open file");
 
-            // send filename first (terminated by newline)
             stream
                 .write_all(format!("{}\n", file_name).as_bytes())
                 .unwrap();
