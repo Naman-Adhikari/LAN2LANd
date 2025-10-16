@@ -55,7 +55,6 @@ fn send_mode() {
                 .write_all(format!("{}\n", file_name).as_bytes())
                 .unwrap();
 
-            // send file bytes
             let mut buffer = [0u8; 4096];
             loop {
                 let n = file.read(&mut buffer).unwrap();
