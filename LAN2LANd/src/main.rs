@@ -1,12 +1,10 @@
 use std::fs::File;
 use std::io::BufRead;
 use std::io::{self, Read, Write};
-use std::net::{TcpListener, TcpStream, UdpSocket};
+use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::process::Command;
 use std::thread;
-use std::time::Duration;
-use hostname;
 
 fn main() {
     println!("Simple LAN File Transfer");
@@ -26,30 +24,6 @@ fn main() {
 }
 
 fn send_mode() {
-    println!("Scanning for peers in your LAN....");
-
-    // Discover peers via UDP
-    let peers = discover_peers();
-    if peers.is_empty() {
-        println!("No peers found!");
-        return; 
-    }
-
-    // Show peers if available
-    println!("Available Peers: ");
-    for(i, (name, ip)) in peers.iter().enumerate() {
-        println!("[{}] {} ({})", i+1, name, ip);
-    }
-
-    print!("Select peer to send file: ");
-    io::stdout().flush().unwrap();
-    let mut choice = String::new();
-    io::stdin().read_line(&mut choice).unwrap();
-
-    let choice : usize = choice.trim().parse().unwrap();
-
-    let (_, peer_ip) = &peers[choice - 1];
-
     let file_path = match Command::new("zenity")
         .arg("--file-selection")
         .arg("--title=Select a file to send")
@@ -65,7 +39,13 @@ fn send_mode() {
     };
     println!("selected file: {}", file_path);
 
-    match TcpStream::connect(format!("{}:7878", peer_ip)) {
+    println!("Enter receiver IP : 192.168.1.");
+    io::stdout().flush().unwrap();
+    let mut ip = String::new();
+    io::stdin().read_line(&mut ip).unwrap();
+    let ip = ip.trim();
+
+    match TcpStream::connect(format!("192.168.1.{}:7878", ip)) {
         Ok(mut stream) => {
             let path_obj = Path::new(&file_path);
             let file_name = path_obj.file_name().unwrap().to_string_lossy();
@@ -75,6 +55,7 @@ fn send_mode() {
                 .write_all(format!("{}\n", file_name).as_bytes())
                 .unwrap();
 
+            // send file bytes
             let mut buffer = [0u8; 4096];
             loop {
                 let n = file.read(&mut buffer).unwrap();
