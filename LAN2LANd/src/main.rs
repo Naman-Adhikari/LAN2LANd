@@ -93,7 +93,7 @@ fn receive_mode() {
 
     thread::spawn(|| {
         listen_for_discovery();
-    })
+    });
 
     let listener = TcpListener::bind("0.0.0.0:7878").expect("Could not bind");
     println!("Listening on port 7878...");
@@ -135,35 +135,25 @@ fn discover_peers() -> Vec<(String, String)> {
     let broadcast_addr = "255.255.255.255:9999";
     let local_socket = UdpSocket::bind("0.0.0.0:0").expect("Couldnt bind UDP Socket");
 
-    //allow broadcast
     local_socket.set_broadcast(true).unwrap();
 
-    // get hostname
-    let hostname = hostname::get().unwrap().to_string_lossy().to_string();
+    let msg = "DISCOVER";
+    local_socket.send_to(msg.as_bytes(), broadcast_addr).unwrap();
 
-
-    let msg = format!("{} : {}", hostname, 0);
-    local_socket
-        .send_to(msg.as_bytes(), broadcast_addr)
-        .unwrap();
-
-    // listen for 1 sec for replies
-    local_socket
-        .set_read_timeout(Some(Duration::from_secs(1)))
-        .unwrap();
+    local_socket.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
 
     let mut peers = Vec::new();
     let mut buf = [0u8; 128];
 
     while let Ok((size, src)) = local_socket.recv_from(&mut buf) {
-            let received = String::from_utf8_lossy(&buf[..size]);
-            let name = received.split(':').next().unwrap_or("Unknown").to_string();
-            let ip = src.ip().to_string();
-
-            peers.push((name, ip));
-        }
+        let received = String::from_utf8_lossy(&buf[..size]);
+        let name = received.trim().to_string();
+        let ip = src.ip().to_string();
+        peers.push((name, ip));
+    }
     peers
 }
+
 
 fn listen_for_discovery() {
     let socket = UdpSocket::bind("0.0.0.0:9999").expect("Could not bind UDP discovery");
