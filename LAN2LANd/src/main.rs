@@ -39,13 +39,13 @@ fn send_mode() {
     };
     println!("selected file: {}", file_path);
 
-    println!("Enter receiver IP : 192.168.1.");
+    println!("Enter receiver IP : (e.g.192.168.1.1");
     io::stdout().flush().unwrap();
     let mut ip = String::new();
     io::stdin().read_line(&mut ip).unwrap();
     let ip = ip.trim();
 
-    match TcpStream::connect(format!("192.168.1.{}:7878", ip)) {
+    match TcpStream::connect(format!("{}:7878", ip)) {
         Ok(mut stream) => {
             let path_obj = Path::new(&file_path);
             let file_name = path_obj.file_name().unwrap().to_string_lossy();
